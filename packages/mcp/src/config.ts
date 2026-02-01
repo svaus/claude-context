@@ -21,7 +21,8 @@ export interface ContextMcpConfig {
     ollamaModel?: string;
     ollamaHost?: string;
     // Vector database configuration
-    vectorDatabaseProvider: 'milvus' | 'postgres';
+    vectorDatabaseProvider: 'milvus' | 'postgres' | 'azureaisearch';
+
     milvusAddress?: string; // Optional, can be auto-resolved from token
     milvusToken?: string;
     // PostgreSQL configuration
@@ -32,6 +33,13 @@ export interface ContextMcpConfig {
     postgresUsername?: string;
     postgresPassword?: string;
     postgresSSL?: boolean;
+    // Azure AI Search Vector Database configuration
+    azureAISearchEndpoint?: string;
+    azureAISearchApiKey?: string;
+    azureAISearchBatchSize?: number;
+    azureAISearchMaxRetries?: number;
+    azureAISearchRetryDelayMs?: number;
+
 }
 
 // Legacy format (v1) - for backward compatibility
@@ -87,7 +95,7 @@ export function getDefaultModelForProvider(provider: string): string {
         case 'OpenAI':
             return 'text-embedding-3-small';
         case 'AzureOpenAI':
-            return 'text-embedding-3-small-deployment'; // Default deployment name
+            return 'text-embedding-3-small'; // Default deployment name
         case 'VoyageAI':
             return 'voyage-code-3';
         case 'Gemini':
@@ -151,6 +159,7 @@ export function createMcpConfig(): ContextMcpConfig {
         azureOpenaiEndpoint: envManager.get('AZURE_OPENAI_ENDPOINT'),
         azureOpenaiApiVersion: envManager.get('AZURE_OPENAI_API_VERSION'),
         azureOpenaiDeploymentName: envManager.get('AZURE_OPENAI_DEPLOYMENT_NAME'),
+
         voyageaiApiKey: envManager.get('VOYAGEAI_API_KEY'),
         geminiApiKey: envManager.get('GEMINI_API_KEY'),
         geminiBaseUrl: envManager.get('GEMINI_BASE_URL'),
@@ -158,7 +167,9 @@ export function createMcpConfig(): ContextMcpConfig {
         ollamaModel: envManager.get('OLLAMA_MODEL'),
         ollamaHost: envManager.get('OLLAMA_HOST'),
         // Vector database configuration
-        vectorDatabaseProvider: (envManager.get('VECTOR_DATABASE_PROVIDER') as 'milvus' | 'postgres') || 'milvus',
+        vectorDatabaseProvider: (envManager.get('VECTOR_DATABASE_PROVIDER') as 'milvus' | 'postgres' | 'azureaisearch') || 'milvus',
+
+        // Milvus Configuration
         milvusAddress: envManager.get('MILVUS_ADDRESS'), // Optional, can be resolved from token
         milvusToken: envManager.get('MILVUS_TOKEN'),
         // PostgreSQL configuration
@@ -168,7 +179,15 @@ export function createMcpConfig(): ContextMcpConfig {
         postgresDatabase: envManager.get('POSTGRES_DATABASE'),
         postgresUsername: envManager.get('POSTGRES_USERNAME'),
         postgresPassword: envManager.get('POSTGRES_PASSWORD'),
-        postgresSSL: envManager.get('POSTGRES_SSL') === 'true'
+        postgresSSL: envManager.get('POSTGRES_SSL') === 'true',
+
+        // Azure AI Search configuration 
+        azureAISearchEndpoint: envManager.get('AZURE_AI_SEARCH_ENDPOINT'),
+        azureAISearchApiKey: envManager.get('AZURE_AI_SEARCH_API_KEY'),
+        azureAISearchBatchSize: envManager.get('AZURE_AI_SEARCH_BATCH_SIZE') ? parseInt(envManager.get('AZURE_AI_SEARCH_BATCH_SIZE')!) : 100,
+        azureAISearchMaxRetries: envManager.get('AZURE_AI_SEARCH_MAX_RETRIES') ? parseInt(envManager.get('AZURE_AI_SEARCH_MAX_RETRIES')!) : 3,
+        azureAISearchRetryDelayMs: envManager.get('AZURE_AI_SEARCH_RETRY_DELAY_MS') ? parseInt(envManager.get('AZURE_AI_SEARCH_RETRY_DELAY_MS')!) : 1000,
+
     };
 
     return config;
@@ -184,12 +203,20 @@ export function logConfigurationSummary(config: ContextMcpConfig): void {
     console.log(`[MCP]   Vector Database Provider: ${config.vectorDatabaseProvider}`);
 
     // Log vector database configuration
-    if (config.vectorDatabaseProvider === 'postgres') {
-        console.log(`[MCP]   PostgreSQL Connection: ${config.postgresConnectionString ? '✅ Connection string configured' :
-            (config.postgresHost ? `${config.postgresHost}:${config.postgresPort || 5432}/${config.postgresDatabase || 'postgres'}` : '❌ Not configured')}`);
-    } else {
-        console.log(`[MCP]   Milvus Address: ${config.milvusAddress || (config.milvusToken ? '[Auto-resolve from token]' : '[Not configured]')}`);
+    switch (config.vectorDatabaseProvider) {
+        case 'postgres':
+            console.log(`[MCP]   PostgreSQL Connection: ${config.postgresConnectionString ? '✅ Connection string configured' :
+                (config.postgresHost ? `${config.postgresHost}:${config.postgresPort || 5432}/${config.postgresDatabase || 'postgres'}` : '❌ Not configured')}`);
+            break;
+        case 'milvus':
+            console.log(`[MCP]   Milvus Address: ${config.milvusAddress || (config.milvusToken ? '[Auto-resolve from token]' : '[Not configured]')}`);
+            break;
+        case 'azureaisearch':
+            console.log(`[MCP]   Azure AI Search Endpoint: ${config.azureAISearchEndpoint ? '✅ Connection string configured' : '❌ Not configured'}`);
+            console.log(`[MCP]   Azure AI Search API Key: ${config.azureAISearchApiKey ? '✅ Api Key string configured' : '❌ Not configured'}`);
+            break;
     }
+
 
     // Log provider-specific configuration without exposing sensitive data
     switch (config.embeddingProvider) {

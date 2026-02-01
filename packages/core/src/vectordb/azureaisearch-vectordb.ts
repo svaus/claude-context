@@ -22,8 +22,8 @@ import {
 } from './types';
 
 export interface AzureAISearchConfig {
-    endpoint: string;
-    apiKey: string;
+    endpoint?: string;
+    apiKey?: string;
     batchSize?: number; // Number of documents to insert in each batch (default: 100)
     maxRetries?: number; // Maximum number of retries for failed operations (default: 3)
     retryDelayMs?: number; // Delay between retries in milliseconds (default: 1000)
@@ -58,8 +58,8 @@ export class AzureAISearchVectorDatabase implements VectorDatabase {
         this.config = config;
         this.searchClients = new Map();
 
-        const credential = new AzureKeyCredential(this.config.apiKey);
-        this.indexClient = new SearchIndexClient(this.config.endpoint, credential);
+        const credential = new AzureKeyCredential(this.config.apiKey || 'undefined');
+        this.indexClient = new SearchIndexClient(this.config.endpoint || 'undefined', credential);
 
         this.initializationPromise = this.initialize();
     }
@@ -82,9 +82,9 @@ export class AzureAISearchVectorDatabase implements VectorDatabase {
 
     private getSearchClient(indexName: string): SearchClient<AzureSearchDocument> {
         if (!this.searchClients.has(indexName)) {
-            const credential = new AzureKeyCredential(this.config.apiKey);
+            const credential = new AzureKeyCredential(this.config.apiKey || 'undefined');
             const client = new SearchClient<AzureSearchDocument>(
-                this.config.endpoint,
+                this.config.endpoint || 'undefined',
                 indexName,
                 credential
             );

@@ -10,8 +10,9 @@ import {
 import {
     SSEServerTransport,
 } from "@modelcontextprotocol/sdk/server/sse.js";
-import { Context } from "@zilliz/claude-context-core";
-import { MilvusVectorDatabase } from "@zilliz/claude-context-core";
+
+import { AzureAISearchVectorDatabase, Context, MilvusVectorDatabase, PostgresVectorDatabase, VectorDatabase } from "@zilliz/claude-context-core";
+
 
 import {
     createMcpConfig,
@@ -53,11 +54,42 @@ class ContextMcpHttpServer {
         const embedding = createEmbeddingInstance(config);
         logEmbeddingProviderInfo(config, embedding);
 
-        // --- Vector DB (Milvus) ---
-        const vectorDatabase = new MilvusVectorDatabase({
-            address: config.milvusAddress,
-            ...(config.milvusToken && { token: config.milvusToken }),
-        });
+        // Initialize vector database based on provider
+
+        let vectorDatabase: VectorDatabase;
+        switch (config.vectorDatabaseProvider) {
+            case 'postgres':
+                console.log(`[VECTOR_DB] Initializing PostgreSQL vector database...`);
+                vectorDatabase = new PostgresVectorDatabase({
+                    connectionString: config.postgresConnectionString,
+                    host: config.postgresHost,
+                    port: config.postgresPort,
+                    database: config.postgresDatabase,
+                    username: config.postgresUsername,
+                    password: config.postgresPassword,
+                    ssl: config.postgresSSL
+                });
+                break;
+            case 'milvus':
+                console.log(`[VECTOR_DB] Initializing Milvus vector database...`);
+                vectorDatabase = new MilvusVectorDatabase({
+                    address: config.milvusAddress,
+                    ...(config.milvusToken && { token: config.milvusToken })
+                });
+                break;
+            case 'azureaisearch':
+                console.log(`[VECTOR_DB] Initializing Azure AI Search vector database...`);
+
+                vectorDatabase = new AzureAISearchVectorDatabase({
+                    endpoint: config.azureAISearchEndpoint!,
+                    apiKey: config.azureAISearchApiKey!,
+                    maxRetries: config.azureAISearchMaxRetries,
+                    retryDelayMs: config.azureAISearchRetryDelayMs,
+                    batchSize: config.azureAISearchBatchSize
+                });
+
+                break;
+        }
 
         // --- Claude Context ---
         this.context = new Context({
