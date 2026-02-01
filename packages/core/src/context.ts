@@ -96,6 +96,7 @@ export interface ContextConfig {
     customIgnorePatterns?: string[]; // New: custom ignore patterns from MCP
     chunkSize?: number;
     chunkOverlap?: number;
+    vectorDbType?: 'postgres' | 'milvus' | 'azureaisearch';
 }
 
 export class Context {
@@ -105,6 +106,7 @@ export class Context {
     private supportedExtensions: string[];
     private ignorePatterns: string[];
     private synchronizers = new Map<string, FileSynchronizer>();
+    private vectorDbType: 'postgres' | 'milvus' | 'azureaisearch';
 
     constructor(config: ContextConfig = {}) {
         // Initialize services
@@ -118,6 +120,9 @@ export class Context {
             throw new Error('VectorDatabase is required. Please provide a vectorDatabase instance in the config.');
         }
         this.vectorDatabase = config.vectorDatabase;
+        this.vectorDbType = config.vectorDbType || 'azureaisearch';
+
+        console.log(`[Context] 🗄️  Using vector database type: ${this.vectorDbType}`);
 
         config.chunkSize = Number(envManager.get('INDEXING_CHUNK_SIZE') ?? 2500);
         config.chunkOverlap = Number(envManager.get('INDEXING_CHUNK_OVERLAP') ?? 300);

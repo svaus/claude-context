@@ -15,6 +15,7 @@ export {
 export { MilvusRestfulVectorDatabase, MilvusRestfulConfig } from './milvus-restful-vectordb';
 export { MilvusVectorDatabase, MilvusConfig } from './milvus-vectordb';
 export { PostgresVectorDatabase, PostgresConfig } from './postgres-vectordb';
+export { AzureAISearchVectorDatabase, AzureAISearchConfig } from './azureaisearch-vectordb';
 export {
     ClusterManager,
     ZillizConfig,

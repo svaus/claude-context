@@ -49,7 +49,7 @@ import {
     ListToolsRequestSchema,
     CallToolRequestSchema
 } from "@modelcontextprotocol/sdk/types.js";
-import { Context, MilvusVectorDatabase, PostgresVectorDatabase, VectorDatabase } from "@zilliz/claude-context-core";
+import { AzureAISearchVectorDatabase, Context, MilvusVectorDatabase, PostgresVectorDatabase, VectorDatabase } from "@zilliz/claude-context-core";
 
 // Import our modular components
 import { createMcpConfig, logConfigurationSummary, showHelpMessage, ContextMcpConfig } from "./config.js";
@@ -87,24 +87,40 @@ class ContextMcpServer {
         logEmbeddingProviderInfo(config, embedding);
 
         // Initialize vector database based on provider
+
         let vectorDatabase: VectorDatabase;
-        if (config.vectorDatabaseProvider === 'postgres') {
-            console.log(`[VECTOR_DB] Initializing PostgreSQL vector database...`);
-            vectorDatabase = new PostgresVectorDatabase({
-                connectionString: config.postgresConnectionString,
-                host: config.postgresHost,
-                port: config.postgresPort,
-                database: config.postgresDatabase,
-                username: config.postgresUsername,
-                password: config.postgresPassword,
-                ssl: config.postgresSSL
-            });
-        } else {
-            console.log(`[VECTOR_DB] Initializing Milvus vector database...`);
-            vectorDatabase = new MilvusVectorDatabase({
-                address: config.milvusAddress,
-                ...(config.milvusToken && { token: config.milvusToken })
-            });
+        switch (config.vectorDatabaseProvider) {
+            case 'postgres':
+                console.log(`[VECTOR_DB] Initializing PostgreSQL vector database...`);
+                vectorDatabase = new PostgresVectorDatabase({
+                    connectionString: config.postgresConnectionString,
+                    host: config.postgresHost,
+                    port: config.postgresPort,
+                    database: config.postgresDatabase,
+                    username: config.postgresUsername,
+                    password: config.postgresPassword,
+                    ssl: config.postgresSSL
+                });
+                break;
+            case 'milvus':
+                console.log(`[VECTOR_DB] Initializing Milvus vector database...`);
+                vectorDatabase = new MilvusVectorDatabase({
+                    address: config.milvusAddress,
+                    ...(config.milvusToken && { token: config.milvusToken })
+                });
+                break;
+            case 'azureaisearch':
+                console.log(`[VECTOR_DB] Initializing Azure AI Search vector database...`);
+
+                vectorDatabase = new AzureAISearchVectorDatabase({
+                    endpoint: config.azureAISearchEndpoint!,
+                    apiKey: config.azureAISearchApiKey!,
+                    maxRetries: config.azureAISearchMaxRetries,
+                    retryDelayMs: config.azureAISearchRetryDelayMs,
+                    batchSize: config.azureAISearchBatchSize
+                });
+
+                break;
         }
 
         // Initialize Claude Context
